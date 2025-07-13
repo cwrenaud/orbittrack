@@ -1,0 +1,80 @@
+[project]
+name = "orbittrack"
+version = "0.1.0"
+description = "Python library for interacting with the TLE and Space APIs"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Calvin Renaud", email = "calvin.renaud@calvinrenaud.com"},
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+dependencies = [
+    "httpx>=0.28.1",
+    "limits>=5.4.0",
+    "pydantic>=2.11.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.9.1",
+    "isort>=5.12.0",
+    "mypy>=1.16.1",
+    "pre-commit>=3.5.0",
+    "pytest>=8.4.1",
+    "pytest-asyncio>=0.23.2",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.0.292",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/orbittrack"
+Documentation = "https://github.com/yourusername/orbittrack#readme"
+Issues = "https://github.com/yourusername/orbittrack/issues"
+Changelog = "https://github.com/yourusername/orbittrack/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# testpaths = ["tests"]
+python_paths = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = ["E", "F", "B", "I"]
+
+[tool.uv.sources]
+orbittrack = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "orbittrack",
+    "pytest>=8.4.1",
+]
+

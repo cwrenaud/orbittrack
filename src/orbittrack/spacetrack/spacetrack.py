@@ -1,7 +1,9 @@
 """
 SpaceTrack API Synchronous Client
-This module provides the `SpaceTrack` class, a synchronous client for interacting with the SpaceTrack API.
-It supports authentication, rate limiting, and convenient methods for retrieving general perturbations (GP) data
+This module provides the `SpaceTrack` class, a synchronous client for interacting with
+the SpaceTrack API.
+It supports authentication, rate limiting, and convenient methods for retrieving general
+perturbations (GP) data
 and historical records for satellites using their NORAD catalog IDs.
 Features:
 - Automatic and manual authentication workflows with thread safety.
@@ -15,7 +17,8 @@ Dependencies:
 - limits: For rate limiting and storage backends.
 - orbittrack.spacetrack.exceptions: Custom exception classes for error handling.
 - orbittrack.spacetrack.models: Data models for API responses.
-- orbittrack.spacetrack.spacetrackutils: Utility functions and decorators for authentication and rate limiting.
+- orbittrack.spacetrack.spacetrackutils: Utility functions and decorators for
+authentication and rate limiting.
 Usage:
     with SpaceTrack(username, password) as st:
         gp_data = st.gp(norad_id)
@@ -57,8 +60,10 @@ class SpaceTrack:
     """
     Synchronous client for interacting with the SpaceTrack API.
 
-    Provides authentication, rate limiting, and convenient methods for retrieving general perturbations (GP) data and history.
-    Supports both automatic and manual authentication workflows, and exposes configuration for rate limiting and storage.
+    Provides authentication, rate limiting, and convenient methods for retrieving
+    general perturbations (GP) data and history.
+    Supports both automatic and manual authentication workflows, and exposes
+    configuration for rate limiting and storage.
     """
 
     def __init__(
@@ -75,7 +80,8 @@ class SpaceTrack:
             base_url (str): The base URL for the SpaceTrack API.
             username (str): The username for authentication.
             password (str): The password for authentication.
-            http_client (Optional[httpx.Client]): An optional custom httpx.Client instance.
+            http_client (Optional[httpx.Client]): An optional custom httpx.Client
+            instance.
         """
         self.base_url: str = base_url
         self.username: str = username
@@ -93,7 +99,8 @@ class SpaceTrack:
     @property
     def authenticated(self) -> bool:
         """
-        Returns True if the user is currently authenticated with the SpaceTrack API, False otherwise.
+        Returns True if the user is currently authenticated with the SpaceTrack API,
+        False otherwise.
         """
         return self._authenticated
 
@@ -106,32 +113,33 @@ class SpaceTrack:
         Authenticate the user with the SpaceTrack API using the provided credentials.
 
         Raises:
-            SpaceTrackAuthenticationError: If authentication fails due to invalid credentials or server error.
+            SpaceTrackAuthenticationError: If authentication fails due to invalid
+            credentials or server error.
         """
-        with self._auth_lock:
-            data = {
-                "identity": self.username,
-                "password": self.password,
-            }
+        data = {
+            "identity": self.username,
+            "password": self.password,
+        }
 
-            response = self.http_client.post("/ajaxauth/login", data=data)
-            response.raise_for_status()
-            res = response.json()
-            if isinstance(res, Mapping):
-                if res.get("Login", None) == "Failed":
-                    raise SpaceTrackAuthenticationError(
-                        "Authentication failed. Please check your SpaceTrack API credentials."
-                    )
-            self._authenticated = True
+        response = self.http_client.post("/ajaxauth/login", data=data)
+        response.raise_for_status()
+        res = response.json()
+        if isinstance(res, Mapping):
+            if res.get("Login", None) == "Failed":
+                raise SpaceTrackAuthenticationError(
+                    """Authentication failed. Please check your SpaceTrack API
+                    credentials."""
+                )
+        self._authenticated = True
 
     def _deauthenticate(self) -> None:
         """
-        Deauthenticate the user by logging out of the SpaceTrack API and clearing the session.
+        Deauthenticate the user by logging out of the SpaceTrack API and clearing the
+        session.
         """
-        with self._auth_lock:
-            if self._authenticated:
-                self.http_client.get("/ajaxauth/logout")
-                self._authenticated = False
+        if self._authenticated:
+            self.http_client.get("/ajaxauth/logout")
+            self._authenticated = False
 
     # ===========================================
     # Public API Methods - handles authentication automatically
@@ -143,8 +151,9 @@ class SpaceTrack:
 
         Thread-safe. Calls the internal _authenticate method.
         """
-        if not self._authenticated:
-            self._authenticate()
+        with self._auth_lock:
+            if not self._authenticated:
+                self._authenticate()
 
     def logout(self) -> None:
         """
@@ -152,8 +161,9 @@ class SpaceTrack:
 
         Thread-safe. Logs out if currently authenticated.
         """
-        if self._authenticated:
-            self._deauthenticate()
+        with self._auth_lock:
+            if self._authenticated:
+                self._deauthenticate()
 
     def close(self) -> None:
         """
@@ -161,9 +171,10 @@ class SpaceTrack:
 
         Ensures resources are properly released and session is closed.
         """
-        if self._authenticated:
-            self.logout()
-        self.http_client.close()
+        with self._auth_lock:
+            if self._authenticated:
+                self.logout()
+            self.http_client.close()
 
     # ===========================================
     # Context Manager Methods
@@ -199,7 +210,8 @@ class SpaceTrack:
             limit (str): The desired rate limit as a string (e.g., "30/minute").
 
         Raises:
-            SpaceTrackRateLimitExceededError: If the provided rate limit exceeds the default allowed limit.
+            SpaceTrackRateLimitExceededError: If the provided rate limit exceeds the
+            default allowed limit.
         """
         provided_limit = parse(limit)
         try:
@@ -217,7 +229,8 @@ class SpaceTrack:
             limit (str): The desired hourly rate limit as a string (e.g., "1000/hour").
 
         Raises:
-            SpaceTrackRateLimitExceededError: If the provided limit exceeds the allowed maximum.
+            SpaceTrackRateLimitExceededError: If the provided limit exceeds the allowed
+            maximum.
         """
         provided_limit = parse(limit)
         try:
@@ -239,13 +252,19 @@ class SpaceTrack:
         """
         Configure the backend storage used for rate limiting in the SpaceTrack client.
 
-        This method sets the storage mechanism for persisting rate limit counters and metadata. Supported backends include in-memory, Memcached, MongoDB, and various Redis storage types. The chosen storage affects how rate limits are enforced across processes or distributed systems.
+        This method sets the storage mechanism for persisting rate limit counters and
+        metadata. Supported backends include in-memory, Memcached, MongoDB, and various
+        Redis storage types. The chosen storage affects how rate limits are enforced
+        across processes or distributed systems.
 
         Args:
-            storage: An instance of a supported storage backend from the `limits.storage` module, such as MemoryStorage, MemcachedStorage, MongoDBStorage, RedisClusterStorage, RedisStorage, or RedisSentinelStorage.
+            storage: An instance of a supported storage backend from the
+            `limits.storage` module, such as MemoryStorage, MemcachedStorage,
+            MongoDBStorage, RedisClusterStorage, RedisStorage, or RedisSentinelStorage.
 
         Raises:
-            SpaceTrackRateLimitExceededError: If the storage could not be set or is not supported.
+            SpaceTrackRateLimitExceededError: If the storage could not be set or is not
+            supported.
         """
         try:
             SpaceTrackUtils.set_ratelimit_storage(storage)
@@ -264,7 +283,8 @@ class SpaceTrack:
         Set the rate limiter implementation for the SpaceTrack API.
 
         Args:
-            ratelimiter: An instance of a supported rate limiter from the `limits.strategies` module.
+            ratelimiter: An instance of a supported rate limiter from the
+            `limits.strategies` module.
 
         Raises:
             SpaceTrackRateLimitExceededError: If the rate limiter could not be set.
@@ -279,7 +299,8 @@ class SpaceTrack:
     # ===========================================
     def _gp(self, norad_id: str) -> httpx.Response:
         """
-        Internal method to retrieve general perturbations (GP) data for a satellite from the SpaceTrack API.
+        Internal method to retrieve general perturbations (GP) data for a satellite
+        from the SpaceTrack API.
 
         Args:
             norad_id (str): The NORAD catalog ID of the satellite.
@@ -299,20 +320,24 @@ class SpaceTrack:
             return response
         except httpx.TimeoutException as e:
             raise SpaceTrackTimeoutError(
-                f"The request to fetch GP data for NORAD_CAT_ID {norad_id} timed out. Please check your network connection or try again later."
+                f"""The request to fetch GP data for NORAD_CAT_ID {norad_id} timed out.
+                Please check your network connection or try again later."""
             ) from e
         except httpx.RequestError as e:
             raise SpaceTrackRequestError(
-                f"A network error occurred while fetching GP data for NORAD_CAT_ID {norad_id}: {e!r}"
+                f"""A network error occurred while fetching GP data for
+                NORAD_CAT_ID {norad_id}: {e!r}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise SpaceTrackRaiseStatusError(
-                f"SpaceTrack API returned HTTP {e.response.status_code} while fetching GP data for NORAD_CAT_ID {norad_id}: {e.response.text}"
+                f"""SpaceTrack API returned HTTP {e.response.status_code} while fetching
+                GP data for NORAD_CAT_ID {norad_id}: {e.response.text}"""
             ) from e
 
     def _all_gp_history(self, norad_id: str) -> httpx.Response:
         """
-        Internal method to retrieve all historical general perturbations (GP) data for a satellite from the SpaceTrack API.
+        Internal method to retrieve all historical general perturbations (GP) data for a
+        satellite from the SpaceTrack API.
 
         Args:
             norad_id (str): The NORAD catalog ID of the satellite.
@@ -332,22 +357,26 @@ class SpaceTrack:
             return response
         except httpx.TimeoutException as e:
             raise SpaceTrackTimeoutError(
-                f"The request to fetch all GP history for NORAD_CAT_ID {norad_id} timed out. Please check your network connection or try again later."
+                f"""The request to fetch all GP history for NORAD_CAT_ID {norad_id}
+                timed out. Please check your network connection or try again later."""
             ) from e
         except httpx.RequestError as e:
             raise SpaceTrackRequestError(
-                f"A network error occurred while fetching all GP history for NORAD_CAT_ID {norad_id}: {e!r}"
+                f"""A network error occurred while fetching all GP history for
+                NORAD_CAT_ID {norad_id}: {e!r}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise SpaceTrackRaiseStatusError(
-                f"SpaceTrack API returned HTTP {e.response.status_code} while fetching all GP history for NORAD_CAT_ID {norad_id}: {e.response.text}"
+                f"""SpaceTrack API returned HTTP {e.response.status_code} while fetching
+                all GP history for NORAD_CAT_ID {norad_id}: {e.response.text}"""
             ) from e
 
     def _gp_history(
         self, norad_id: str, start_date: str, end_date: str
     ) -> httpx.Response:
         """
-        Internal method to retrieve general perturbations (GP) history for a satellite within a date range from the SpaceTrack API.
+        Internal method to retrieve general perturbations (GP) history for a satellite
+        within a date range from the SpaceTrack API.
 
         Args:
             norad_id (str): The NORAD catalog ID of the satellite.
@@ -369,15 +398,20 @@ class SpaceTrack:
             return response
         except httpx.TimeoutException as e:
             raise SpaceTrackTimeoutError(
-                f"The request to fetch GP history for NORAD_CAT_ID {norad_id} from {start_date} to {end_date} timed out. Please check your network connection or try again later."
+                f"""The request to fetch GP history for NORAD_CAT_ID {norad_id} from
+                {start_date} to {end_date} timed out. Please check your network
+                connection or try again later."""
             ) from e
         except httpx.RequestError as e:
             raise SpaceTrackRequestError(
-                f"A network error occurred while fetching GP history for NORAD_CAT_ID {norad_id} from {start_date} to {end_date}: {e!r}"
+                f"""A network error occurred while fetching GP history for NORAD_CAT_ID
+                {norad_id} from {start_date} to {end_date}: {e!r}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise SpaceTrackRaiseStatusError(
-                f"SpaceTrack API returned HTTP {e.response.status_code} while fetching GP history for NORAD_CAT_ID {norad_id} from {start_date} to {end_date}: {e.response.text}"
+                f"""SpaceTrack API returned HTTP {e.response.status_code} while fetching
+                GP history for NORAD_CAT_ID {norad_id} from {start_date} to {end_date}:
+                {e.response.text}"""
             ) from e
 
     # ===========================================
@@ -387,10 +421,13 @@ class SpaceTrack:
     @SpaceTrackUtils.ratelimit
     def gp(self, norad_id: str) -> SpaceTrackGPResponse:
         """
-        Retrieve general perturbations (GP) data for a satellite from the SpaceTrack API.
+        Retrieve general perturbations (GP) data for a satellite from the SpaceTrack
+        API.
 
-        This method authenticates the user if necessary, sends a GET request to the SpaceTrack API
-        for the specified NORAD catalog ID, and returns the response data wrapped in a SpaceTrackGPResponse object.
+        This method authenticates the user if necessary, sends a GET request to the
+        SpaceTrack API
+        for the specified NORAD catalog ID, and returns the response data wrapped in a
+        SpaceTrackGPResponse object.
         The user is logged out and the HTTP client is closed after the request.
 
         Args:
@@ -413,10 +450,13 @@ class SpaceTrack:
     @SpaceTrackUtils.ratelimit
     def all_gp_history(self, norad_id: str) -> SpaceTrackGPResponse:
         """
-        Retrieve all historical general perturbations (GP) data for a satellite from the SpaceTrack API.
+        Retrieve all historical general perturbations (GP) data for a satellite from the
+        SpaceTrack API.
 
-        This method authenticates the user if necessary, sends a GET request to the SpaceTrack API
-        for the specified NORAD catalog ID, and returns the response data wrapped in a SpaceTrackGPResponse object.
+        This method authenticates the user if necessary, sends a GET request to the
+        SpaceTrack API
+        for the specified NORAD catalog ID, and returns the response data wrapped in a
+        SpaceTrackGPResponse object.
         The user is logged out and the HTTP client is closed after the request.
 
         Args:
@@ -441,10 +481,13 @@ class SpaceTrack:
         self, norad_id: str, start_date: str, end_date: str
     ) -> SpaceTrackGPResponse:
         """
-        Retrieve general perturbations (GP) history for a satellite within a date range from the SpaceTrack API.
+        Retrieve general perturbations (GP) history for a satellite within a date range
+        from the SpaceTrack API.
 
-        This method authenticates the user if necessary, sends a GET request to the SpaceTrack API
-        for the specified NORAD catalog ID and date range, and returns the response data wrapped in a SpaceTrackGPResponse object.
+        This method authenticates the user if necessary, sends a GET request to the
+        SpaceTrack API
+        for the specified NORAD catalog ID and date range, and returns the response
+        data wrapped in a SpaceTrackGPResponse object.
         The user is logged out and the HTTP client is closed after the request.
 
         Args:
@@ -468,10 +511,13 @@ class SpaceTrack:
     @SpaceTrackUtils.ratelimit
     def gp_session(self, norad_id: str) -> SpaceTrackGPResponse:
         """
-        Retrieve general perturbations (GP) data for a satellite from the SpaceTrack API within an authenticated session.
+        Retrieve general perturbations (GP) data for a satellite from the SpaceTrack API
+        within an authenticated session.
 
-        This method is intended to be used when the user manages authentication manually (e.g., via a context manager or explicit login/logout).
-        It requires the user to be authenticated before calling, and does not perform login or logout automatically.
+        This method is intended to be used when the user manages authentication manually
+        (e.g., via a context manager or explicit login/logout).
+        It requires the user to be authenticated before calling, and does not perform
+        login or logout automatically.
 
         Args:
             norad_id (str): The NORAD catalog ID of the satellite.
@@ -485,7 +531,8 @@ class SpaceTrack:
         """
         if not self._authenticated:
             raise SpaceTrackAuthenticationError(
-                "User is not authenticated. Please call login() before using this method."
+                """User is not authenticated. Please call login() before using this
+                method."""
             )
         response = self._gp(norad_id)
         return SpaceTrackGPResponse(
@@ -496,10 +543,13 @@ class SpaceTrack:
     @SpaceTrackUtils.ratelimit
     def all_gp_history_session(self, norad_id: str) -> SpaceTrackGPResponse:
         """
-        Retrieve all historical general perturbations (GP) data for a satellite from the SpaceTrack API within an authenticated session.
+        Retrieve all historical general perturbations (GP) data for a satellite from the
+        SpaceTrack API within an authenticated session.
 
-        This method is intended to be used when the user manages authentication manually (e.g., via a context manager or explicit login/logout).
-        It requires the user to be authenticated before calling, and does not perform login or logout automatically.
+        This method is intended to be used when the user manages authentication manually
+        (e.g., via a context manager or explicit login/logout).
+        It requires the user to be authenticated before calling, and does not perform
+        login or logout automatically.
 
         Args:
             norad_id (str): The NORAD catalog ID of the satellite.
@@ -513,7 +563,8 @@ class SpaceTrack:
         """
         if not self._authenticated:
             raise SpaceTrackAuthenticationError(
-                "User is not authenticated. Please call login() before using this method."
+                """User is not authenticated. Please call login() before using this
+                method."""
             )
         response = self._all_gp_history(norad_id)
         response.raise_for_status()
@@ -527,10 +578,13 @@ class SpaceTrack:
         self, norad_id: str, start_date: str, end_date: str
     ) -> SpaceTrackGPResponse:
         """
-        Retrieve general perturbations (GP) history for a satellite within a date range from the SpaceTrack API within an authenticated session.
+        Retrieve general perturbations (GP) history for a satellite within a date range
+        from the SpaceTrack API within an authenticated session.
 
-        This method is intended to be used when the user manages authentication manually (e.g., via a context manager or explicit login/logout).
-        It requires the user to be authenticated before calling, and does not perform login or logout automatically.
+        This method is intended to be used when the user manages authentication manually
+        (e.g., via a context manager or explicit login/logout).
+        It requires the user to be authenticated before calling, and does not perform
+        login or logout automatically.
 
         Args:
             norad_id (str): The NORAD catalog ID of the satellite.
@@ -546,7 +600,8 @@ class SpaceTrack:
         """
         if not self._authenticated:
             raise SpaceTrackAuthenticationError(
-                "User is not authenticated. Please call login() before using this method."
+                """User is not authenticated. Please call login() before using this
+                method."""
             )
         response = self._gp_history(norad_id, start_date, end_date)
         return SpaceTrackGPResponse(

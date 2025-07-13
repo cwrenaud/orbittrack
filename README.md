@@ -1,6 +1,8 @@
 # OrbitTrack
 
-[![Python CI](https://github.com/yourusername/orbittrack/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/orbittrack/actions/workflows/ci.yml)
+## NOT YET A PYPI LIBRARY
+
+[![Python CI](https://github.com/cwrenaud/orbittrack/actions/workflows/ci.yml/badge.svg)](https://github.com/yourusername/orbittrack/actions/workflows/ci.yml)
 [![PyPI version](https://badge.fury.io/py/orbittrack.svg)](https://badge.fury.io/py/orbittrack)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://conventionalcommits.org)
@@ -53,18 +55,18 @@ from orbittrack.spacetrack.aio import AsyncSpaceTrack
 async def main():
     # Create an async client
     client = AsyncSpaceTrack(username="your_username", password="your_password")
-    
+
     # Get GP data for a satellite (ISS = 25544)
     gp_data = await client.gp("25544")
     print(f"Satellite name: {gp_data.OBJECT_NAME}")
     print(f"Epoch: {gp_data.EPOCH}")
-    
+
     # Get historical data for a date range
     history = await client.gp_history("25544", "2023-01-01", "2023-01-31")
-    
+
     # Don't forget to close the client
     await client.close()
-    
+
     # Using a context manager (handles login/logout automatically)
     async with AsyncSpaceTrack(username="your_username", password="your_password") as st:
         data = await st.gp("25544")
@@ -145,4 +147,4 @@ MIT
 
 ## Credits
 
-Developed by [Your Name]
+Developed by Calvin Renaud

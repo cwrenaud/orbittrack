@@ -316,6 +316,7 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "orbittrack" },
+    { name = "pre-commit" },
     { name = "pytest" },
 ]
 
@@ -338,6 +339,7 @@ provides-extras = ["dev"]
 [package.metadata.requires-dev]
 dev = [
     { name = "orbittrack", editable = "." },
+    { name = "pre-commit", specifier = ">=4.2.0" },
     { name = "pytest", specifier = ">=8.4.1" },
 ]
 

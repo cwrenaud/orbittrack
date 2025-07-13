@@ -46,7 +46,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-# testpaths = ["tests"]
 python_paths = ["src"]
 
 [tool.black]
@@ -75,6 +74,6 @@ orbittrack = { workspace = true }
 [dependency-groups]
 dev = [
     "orbittrack",
+    "pre-commit>=4.2.0",
     "pytest>=8.4.1",
 ]
-

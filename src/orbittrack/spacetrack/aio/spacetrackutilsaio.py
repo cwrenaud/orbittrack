@@ -1,23 +1,25 @@
 import functools
 from typing import Callable
-from limits import parse, RateLimitItem
+
+from limits import RateLimitItem, parse
+from limits.aio.storage import MemcachedStorage as AsyncMemcachedStorage
+from limits.aio.storage import MemoryStorage as AsyncMemoryStorage
+from limits.aio.storage import MongoDBStorage as AsyncMongoDBStorage
+from limits.aio.storage import RedisClusterStorage as AsyncRedisClusterStorage
+from limits.aio.storage import RedisSentinelStorage as AsyncRedisSentinelStorage
+from limits.aio.storage import RedisStorage as AsyncRedisStorage
+from limits.aio.strategies import FixedWindowRateLimiter as AsyncFixedWindowRateLimiter
 from limits.aio.strategies import (
     MovingWindowRateLimiter as AsyncMovingWindowRateLimiter,
-    FixedWindowRateLimiter as AsyncFixedWindowRateLimiter,
-    SlidingWindowCounterRateLimiter as AsyncSlidingWindowCounterRateLimiter
 )
-from limits.aio.storage import (
-    MemcachedStorage as AsyncMemcachedStorage,
-    MongoDBStorage as AsyncMongoDBStorage,
-    RedisClusterStorage as AsyncRedisClusterStorage,
-    RedisStorage as AsyncRedisStorage,
-    RedisSentinelStorage as AsyncRedisSentinelStorage,
-    MemoryStorage as AsyncMemoryStorage,
+from limits.aio.strategies import (
+    SlidingWindowCounterRateLimiter as AsyncSlidingWindowCounterRateLimiter,
 )
+
 from orbittrack.spacetrack.exceptions import (
     SpaceTrackAuthenticationError,
     SpaceTrackRateLimitError,
-    SpaceTrackRateLimitExceededError
+    SpaceTrackRateLimitExceededError,
 )
 
 
@@ -32,8 +34,7 @@ class AsyncSpaceTrackUtils:
     _ratelimit_limiter = None
     _hourly_rate_limit = parse("300/hour")
     _minute_rate_limit = parse("30/minute")
-    
-    
+
     @classmethod
     def get_minute_rate_limit(cls) -> RateLimitItem:
         """
@@ -47,57 +48,62 @@ class AsyncSpaceTrackUtils:
         Returns the hourly rate limit for the SpaceTrack API.
         """
         return cls._hourly_rate_limit
-    
+
     @classmethod
-    def set_minute_rate_limit(cls, provided_limit: RateLimitItem):
+    def set_minute_rate_limit(cls, provided_limit: RateLimitItem) -> None:
         """
         Sets the minute rate limit for the SpaceTrack API.
         If the provided limit exceeds the default, raises an error.
         """
         default_limit = cls._minute_rate_limit
         if (
-            provided_limit.amount / provided_limit.GRANULARITY.seconds >
-            default_limit.amount / default_limit.GRANULARITY.seconds
+            provided_limit.amount / provided_limit.GRANULARITY.seconds
+            > default_limit.amount / default_limit.GRANULARITY.seconds
         ):
             raise SpaceTrackRateLimitExceededError(
                 "This rate limit exceeds the default allowed limit."
             )
         else:
             cls._minute_rate_limit = provided_limit
-            
+
     @classmethod
-    def set_hourly_rate_limit(cls, provided_limit: RateLimitItem):
+    def set_hourly_rate_limit(cls, provided_limit: RateLimitItem) -> None:
         """
         Sets the hourly rate limit for the SpaceTrack API.
         If the provided limit exceeds the default, raises an error.
         """
         default_limit = cls._hourly_rate_limit
         if (
-            provided_limit.amount / provided_limit.GRANULARITY.seconds >
-            default_limit.amount / default_limit.GRANULARITY.seconds
+            provided_limit.amount / provided_limit.GRANULARITY.seconds
+            > default_limit.amount / default_limit.GRANULARITY.seconds
         ):
             raise SpaceTrackRateLimitExceededError(
                 "This rate limit exceeds the default allowed limit."
             )
         else:
             cls._hourly_rate_limit = provided_limit
-            
+
     @classmethod
     def set_ratelimiter(
         cls,
-        ratelimiter: AsyncMovingWindowRateLimiter | AsyncFixedWindowRateLimiter | 
-        AsyncSlidingWindowCounterRateLimiter
-        ) -> None:
+        ratelimiter: AsyncMovingWindowRateLimiter
+        | AsyncFixedWindowRateLimiter
+        | AsyncSlidingWindowCounterRateLimiter,
+    ) -> None:
         """
         Sets the rate limiter for the SpaceTrack API.
         """
         cls._ratelimit_limiter = ratelimiter
-        
+
     @classmethod
     def set_ratelimit_storage(
         cls,
-        storage: AsyncMemoryStorage | AsyncMemcachedStorage | AsyncMongoDBStorage |
-        AsyncRedisClusterStorage | AsyncRedisStorage | AsyncRedisSentinelStorage
+        storage: AsyncMemoryStorage
+        | AsyncMemcachedStorage
+        | AsyncMongoDBStorage
+        | AsyncRedisClusterStorage
+        | AsyncRedisStorage
+        | AsyncRedisSentinelStorage,
     ) -> None:
         """
         Sets the storage backend for the rate limiter.
@@ -105,7 +111,7 @@ class AsyncSpaceTrackUtils:
         cls._ratelimit_storage = storage
 
     @classmethod
-    async def _ensure_limiter(cls):
+    async def _ensure_limiter(cls) -> None:
         if cls._ratelimit_storage is None or cls._ratelimit_limiter is None:
             cls._ratelimit_storage = AsyncMemoryStorage()
             cls._ratelimit_limiter = AsyncMovingWindowRateLimiter(
@@ -120,17 +126,16 @@ class AsyncSpaceTrackUtils:
         """
 
         @functools.wraps(func)
-        async def wrapper(self, *args, **kwargs):
+        async def wrapper(self, *args, **kwargs):  # type: ignore
             await AsyncSpaceTrackUtils._ensure_limiter()
             limiter = AsyncSpaceTrackUtils._ratelimit_limiter
             minute_rate_limit = AsyncSpaceTrackUtils._minute_rate_limit
             hourly_rate_limit = AsyncSpaceTrackUtils._hourly_rate_limit
             if limiter is None:
                 raise RuntimeError("Rate limiter was not properly initialized.")
-            if (
-                not await limiter.hit(minute_rate_limit, "space_track_api") and
-                not await limiter.hit(hourly_rate_limit, "space_track_api")
-            ):
+            if not await limiter.hit(
+                minute_rate_limit, "space_track_api"
+            ) and not await limiter.hit(hourly_rate_limit, "space_track_api"):
                 raise SpaceTrackRateLimitError(
                     "Rate limit exceeded. Please try again later."
                 )
@@ -139,20 +144,21 @@ class AsyncSpaceTrackUtils:
         return wrapper
 
     @staticmethod
-    def handle_login(func):
+    def handle_login(func: Callable) -> Callable:
         """
         Decorator to ensure the user is logged in before making an API call.
-        If the user is not authenticated, it will call the _authenticate method before executing the function.
+        If the user is not authenticated, it will call the _authenticate method before
+        executing the function.
         """
 
         @functools.wraps(func)
-        async def wrapper(self, *args, **kwargs):
+        async def wrapper(self, *args, **kwargs):  # type: ignore
             try:
                 if not self.authenticated:
                     await self.login()
             except SpaceTrackAuthenticationError:
                 await self.logout()
-                raise  
+                raise
             return await func(self, *args, **kwargs)
 
         return wrapper
@@ -165,7 +171,7 @@ class AsyncSpaceTrackUtils:
         """
 
         @functools.wraps(func)
-        async def wrapper(self, *args, **kwargs):
+        async def wrapper(self, *args, **kwargs):  # type: ignore
             result = await func(self, *args, **kwargs)
             if self.authenticated:
                 await self.close()
@@ -182,7 +188,7 @@ class AsyncSpaceTrackUtils:
         """
 
         @functools.wraps(func)
-        async def wrapper(self, *args, **kwargs):
+        async def wrapper(self, *args, **kwargs):  # type: ignore
             if not self.authenticated:
                 await self.login()
             result = await func(self, *args, **kwargs)
@@ -192,4 +198,3 @@ class AsyncSpaceTrackUtils:
             return result
 
         return wrapper
-    

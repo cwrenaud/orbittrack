@@ -297,7 +297,7 @@ class SpaceTrack:
     # ===========================================
     # Private API Methods
     # ===========================================
-    def _gp(self, norad_id: str) -> httpx.Response:
+    def _gp(self, filter_by: str, value: str) -> httpx.Response:
         """
         Internal method to retrieve general perturbations (GP) data for a satellite
         from the SpaceTrack API.
@@ -314,27 +314,27 @@ class SpaceTrack:
         """
         try:
             response = self.http_client.get(
-                f"/basicspacedata/query/class/gp/NORAD_CAT_ID/{norad_id}/orderby/CREATION_DATE%20asc/emptyresult/show"
+                f"/basicspacedata/query/class/gp/{filter_by}/{value}/orderby/CREATION_DATE%20asc/emptyresult/show"
             )
             response.raise_for_status()
             return response
         except httpx.TimeoutException as e:
             raise SpaceTrackTimeoutError(
-                f"""The request to fetch GP data for NORAD_CAT_ID {norad_id} timed out.
+                f"""The request to fetch GP data for {filter_by} {value} timed out.
                 Please check your network connection or try again later."""
             ) from e
         except httpx.RequestError as e:
             raise SpaceTrackRequestError(
                 f"""A network error occurred while fetching GP data for
-                NORAD_CAT_ID {norad_id}: {e!r}"""
+                {filter_by} {value}: {e!r}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise SpaceTrackRaiseStatusError(
                 f"""SpaceTrack API returned HTTP {e.response.status_code} while fetching
-                GP data for NORAD_CAT_ID {norad_id}: {e.response.text}"""
+                GP data for {filter_by} {value}: {e.response.text}"""
             ) from e
 
-    def _all_gp_history(self, norad_id: str) -> httpx.Response:
+    def _all_gp_history(self, filter_by: str, value: str) -> httpx.Response:
         """
         Internal method to retrieve all historical general perturbations (GP) data for a
         satellite from the SpaceTrack API.
@@ -351,28 +351,28 @@ class SpaceTrack:
         """
         try:
             response = self.http_client.get(
-                f"basicspacedata/query/class/gp_history/NORAD_CAT_ID/{norad_id}/orderby/NORAD_CAT_ID%20asc/emptyresult/show"
+                f"basicspacedata/query/class/gp_history/{filter_by}/{value}/orderby/NORAD_CAT_ID%20asc/emptyresult/show"
             )
             response.raise_for_status()
             return response
         except httpx.TimeoutException as e:
             raise SpaceTrackTimeoutError(
-                f"""The request to fetch all GP history for NORAD_CAT_ID {norad_id}
+                f"""The request to fetch all GP history for {filter_by} {value}
                 timed out. Please check your network connection or try again later."""
             ) from e
         except httpx.RequestError as e:
             raise SpaceTrackRequestError(
                 f"""A network error occurred while fetching all GP history for
-                NORAD_CAT_ID {norad_id}: {e!r}"""
+                {filter_by} {value}: {e!r}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise SpaceTrackRaiseStatusError(
                 f"""SpaceTrack API returned HTTP {e.response.status_code} while fetching
-                all GP history for NORAD_CAT_ID {norad_id}: {e.response.text}"""
+                all GP history for {filter_by} {value}: {e.response.text}"""
             ) from e
 
     def _gp_history(
-        self, norad_id: str, start_date: str, end_date: str
+        self, filter_by: str, value: str, start_date: str, end_date: str
     ) -> httpx.Response:
         """
         Internal method to retrieve general perturbations (GP) history for a satellite
@@ -392,34 +392,68 @@ class SpaceTrack:
         """
         try:
             response = self.http_client.get(
-                f"basicspacedata/query/class/gp_history/NORAD_CAT_ID/{norad_id}/EPOCH/{start_date}--{end_date}/orderby/EPOCH%20asc/emptyresult/show"
+                f"basicspacedata/query/class/gp_history/{filter_by}/{value}/EPOCH/{start_date}--{end_date}/orderby/EPOCH%20asc/emptyresult/show"
             )
             response.raise_for_status()
             return response
         except httpx.TimeoutException as e:
             raise SpaceTrackTimeoutError(
-                f"""The request to fetch GP history for NORAD_CAT_ID {norad_id} from
+                f"""The request to fetch GP history for {filter_by} {value} from
                 {start_date} to {end_date} timed out. Please check your network
                 connection or try again later."""
             ) from e
         except httpx.RequestError as e:
             raise SpaceTrackRequestError(
-                f"""A network error occurred while fetching GP history for NORAD_CAT_ID
-                {norad_id} from {start_date} to {end_date}: {e!r}"""
+                f"""A network error occurred while fetching GP history for {filter_by}
+                {value} from {start_date} to {end_date}: {e!r}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise SpaceTrackRaiseStatusError(
                 f"""SpaceTrack API returned HTTP {e.response.status_code} while fetching
-                GP history for NORAD_CAT_ID {norad_id} from {start_date} to {end_date}:
+                GP history for {filter_by} {value} from {start_date} to {end_date}:
                 {e.response.text}"""
             ) from e
 
+    def _custom_query(self, query: str) -> httpx.Response:
+        """
+        Internal method to execute a custom query against the SpaceTrack API.
+
+        Args:
+            query (str): The custom query string to execute.
+
+        Returns:
+            httpx.Response: The HTTP response object from the API.
+
+        Raises:
+            SpaceTrackAuthenticationError: If the user is not authenticated.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        try:
+            response = self.http_client.get(query)
+            response.raise_for_status()
+            return response
+        except httpx.TimeoutException as e:
+            raise SpaceTrackTimeoutError(
+                f"""The request for custom query '{query}' timed out. Please check your
+                network connection or try again later."""
+            ) from e
+        except httpx.RequestError as e:
+            raise SpaceTrackRequestError(
+                f"""A network error occurred while executing custom query '{query}':
+                {e!r}"""
+            ) from e
+        except httpx.HTTPStatusError as e:
+            raise SpaceTrackRaiseStatusError(
+                f"""SpaceTrack API returned HTTP {e.response.status_code} for custom
+                query '{query}': {e.response.text}"""
+            ) from e
+
     # ===========================================
-    # Public API Methods
+    # Public API Methods - handles authentication automatically
     # ===========================================
     @SpaceTrackUtils.handle_login_and_logout
     @SpaceTrackUtils.ratelimit
-    def gp(self, norad_id: str) -> SpaceTrackGPResponse:
+    def gp(self, filter_by: str, value: str) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) data for a satellite from the SpaceTrack
         API.
@@ -440,7 +474,7 @@ class SpaceTrack:
             SpaceTrackAuthenticationError: If authentication fails.
             httpx.HTTPStatusError: If the HTTP request fails.
         """
-        response = self._gp(norad_id)
+        response = self._gp(filter_by, value)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
@@ -448,7 +482,7 @@ class SpaceTrack:
 
     @SpaceTrackUtils.handle_login_and_logout
     @SpaceTrackUtils.ratelimit
-    def all_gp_history(self, norad_id: str) -> SpaceTrackGPResponse:
+    def all_gp_history(self, filter_by: str, value: str) -> SpaceTrackGPResponse:
         """
         Retrieve all historical general perturbations (GP) data for a satellite from the
         SpaceTrack API.
@@ -469,7 +503,7 @@ class SpaceTrack:
             SpaceTrackAuthenticationError: If authentication fails.
             httpx.HTTPStatusError: If the HTTP request fails.
         """
-        response = self._all_gp_history(norad_id)
+        response = self._all_gp_history(filter_by, value)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
@@ -478,7 +512,7 @@ class SpaceTrack:
     @SpaceTrackUtils.handle_login_and_logout
     @SpaceTrackUtils.ratelimit
     def gp_history(
-        self, norad_id: str, start_date: str, end_date: str
+        self, filter_by: str, value: str, start_date: str, end_date: str
     ) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) history for a satellite within a date range
@@ -502,14 +536,34 @@ class SpaceTrack:
             SpaceTrackAuthenticationError: If authentication fails.
             httpx.HTTPStatusError: If the HTTP request fails.
         """
-        response = self._gp_history(norad_id, start_date, end_date)
+        response = self._gp_history(filter_by, value, start_date, end_date)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
         )
 
+    def custom_query(self, query: str) -> httpx.Response:
+        """
+        Execute a custom query against the SpaceTrack API asynchronously.
+
+        Args:
+            query (str): The custom query string to execute.
+
+        Returns:
+            httpx.Response: The HTTP response object from the API.
+
+        Raises:
+            SpaceTrackAuthenticationError: If the user is not authenticated.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        response = self._custom_query(query)
+        return response
+
+    # ===========================================
+    # Public API Methods - handles authentication manually
+    # ===========================================
     @SpaceTrackUtils.ratelimit
-    def gp_session(self, norad_id: str) -> SpaceTrackGPResponse:
+    def gp_session(self, filter_by: str, value: str) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) data for a satellite from the SpaceTrack API
         within an authenticated session.
@@ -534,14 +588,16 @@ class SpaceTrack:
                 """User is not authenticated. Please call login() before using this
                 method."""
             )
-        response = self._gp(norad_id)
+        response = self._gp(filter_by, value)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
         )
 
     @SpaceTrackUtils.ratelimit
-    def all_gp_history_session(self, norad_id: str) -> SpaceTrackGPResponse:
+    def all_gp_history_session(
+        self, filter_by: str, value: str
+    ) -> SpaceTrackGPResponse:
         """
         Retrieve all historical general perturbations (GP) data for a satellite from the
         SpaceTrack API within an authenticated session.
@@ -566,7 +622,7 @@ class SpaceTrack:
                 """User is not authenticated. Please call login() before using this
                 method."""
             )
-        response = self._all_gp_history(norad_id)
+        response = self._all_gp_history(filter_by, value)
         response.raise_for_status()
         return SpaceTrackGPResponse(
             status_code=response.status_code,
@@ -575,7 +631,7 @@ class SpaceTrack:
 
     @SpaceTrackUtils.ratelimit
     def gp_history_session(
-        self, norad_id: str, start_date: str, end_date: str
+        self, filter_by: str, value: str, start_date: str, end_date: str
     ) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) history for a satellite within a date range
@@ -603,8 +659,30 @@ class SpaceTrack:
                 """User is not authenticated. Please call login() before using this
                 method."""
             )
-        response = self._gp_history(norad_id, start_date, end_date)
+        response = self._gp_history(filter_by, value, start_date, end_date)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
         )
+
+    def custom_query_session(self, query: str) -> httpx.Response:
+        """
+        Execute a custom query against the SpaceTrack API asynchronously within an
+        authenticated session.
+        This method is intended to be used when the user manages authentication manually
+        (e.g., via a context manager or explicit login/logout).
+        Args:
+            query (str): The custom query string to execute.
+        Returns:
+            httpx.Response: The HTTP response object from the API.
+        Raises:
+            SpaceTrackAuthenticationError: If the user is not authenticated.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        if not self._authenticated:
+            raise SpaceTrackAuthenticationError(
+                """User is not authenticated. Please call login() before using this
+                method."""
+            )
+        response = self._custom_query(query)
+        return response

@@ -5,11 +5,16 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+# ============================================
+# SpaceTrack Response Models
+# ============================================
+
 
 class SpaceTrackBaseModel(BaseModel):
     """
     Base model for SpaceTrack data.
     """
+
     status_code: Optional[int] = None
 
     model_config = {
@@ -20,11 +25,13 @@ class SpaceTrackBaseModel(BaseModel):
             # Add custom encoders if needed
         },
     }
-        
+
+
 class SpaceTrackGPResponse(SpaceTrackBaseModel):
     """
     Model for SpaceTrack GP responses.
     """
+
     CCSDS_OMM_VERS: Optional[str] = None
     COMMENT: Optional[str] = None
     CREATION_DATE: Optional[str] = None
@@ -67,3 +74,12 @@ class SpaceTrackGPResponse(SpaceTrackBaseModel):
     TLE_LINE2: Optional[str] = None
 
 
+class SpaceTrackAnnouncementResponse(SpaceTrackBaseModel):
+    """
+    Model for SpaceTrack announcement responses.
+    """
+
+    announcement_type: Optional[str] = None
+    announcement_text: Optional[str] = None
+    announcement_start: Optional[str] = None
+    announcement_end: Optional[str] = None

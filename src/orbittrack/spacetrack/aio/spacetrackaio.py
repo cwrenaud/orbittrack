@@ -26,7 +26,10 @@ from orbittrack.spacetrack.exceptions import (
     SpaceTrackAuthenticationError,
     SpaceTrackRateLimitExceededError,
 )
-from orbittrack.spacetrack.models import SpaceTrackGPResponse
+from orbittrack.spacetrack.models import (
+    SpaceTrackAnnouncementResponse,
+    SpaceTrackGPResponse,
+)
 
 
 class AsyncSpaceTrack:
@@ -280,7 +283,7 @@ class AsyncSpaceTrack:
     # Private API Methods
     # ===========================================
 
-    async def _gp(self, norad_id: str) -> httpx.Response:
+    async def _gp(self, filter_by: str, value: str) -> httpx.Response:
         """
         Retrieve general perturbations (GP) data for a satellite from the SpaceTrack
         API.
@@ -303,33 +306,33 @@ class AsyncSpaceTrack:
         """
         try:
             response = await self.http_client.get(
-                f"/basicspacedata/query/class/gp/NORAD_CAT_ID/{norad_id}/orderby/CREATION_DATE%20asc/emptyresult/show"
+                f"/basicspacedata/query/class/gp/{filter_by}/{value}/orderby/CREATION_DATE%20asc/emptyresult/show"
             )
             response.raise_for_status()
             return response
         except asyncio.TimeoutError as e:
             raise AsyncSpaceTrackAsyncTimeoutError(
                 f"""The request to SpaceTrack timed out (asyncio.TimeoutError)
-                while retrieving GP data for NORAD ID {norad_id}: {str(e)}"""
+                while retrieving GP data for {filter_by} {value}: {str(e)}"""
             ) from e
         except httpx.TimeoutException as e:
             raise AsyncSpaceTrackHttpxTimeoutError(
                 f"""The request to SpaceTrack timed out (httpx.TimeoutException)
-                while retrieving GP data for NORAD ID {norad_id}: {str(e)}"""
+                while retrieving GP data for {filter_by} {value}: {str(e)}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise AsyncSpaceTrackRaiseStatusError(
                 f"""SpaceTrack API returned an unsuccessful HTTP status
                 ({e.response.status_code})while retrieving GP data
-                for NORAD ID {norad_id}: {e.response.text}"""
+                for {filter_by} {value}: {e.response.text}"""
             ) from e
         except httpx.RequestError as e:
             raise AsyncSpaceTrackRequestError(
                 f"""A network error occurred while requesting
-                GP data for NORAD ID {norad_id}: {str(e)}"""
+                GP data for {filter_by} {value}: {str(e)}"""
             ) from e
 
-    async def _all_gp_history(self, norad_id: str) -> httpx.Response:
+    async def _all_gp_history(self, filter_by: str, value: str) -> httpx.Response:
         """
         Retrieve historical general perturbations (GP) data for
         a satellite from the SpaceTrack API.
@@ -352,34 +355,34 @@ class AsyncSpaceTrack:
         """
         try:
             response = await self.http_client.get(
-                f"basicspacedata/query/class/gp_history/NORAD_CAT_ID/{norad_id}/orderby/NORAD_CAT_ID%20asc/emptyresult/show"
+                f"basicspacedata/query/class/gp_history/{filter_by}/{value}/orderby/NORAD_CAT_ID%20asc/emptyresult/show"
             )
             response.raise_for_status()
             return response
         except asyncio.TimeoutError as e:
             raise AsyncSpaceTrackAsyncTimeoutError(
                 f"""The request to SpaceTrack timed out (asyncio.TimeoutError)
-                while retrieving all GP history for NORAD ID {norad_id}: {str(e)}"""
+                while retrieving all GP history for {filter_by} {value}: {str(e)}"""
             ) from e
         except httpx.TimeoutException as e:
             raise AsyncSpaceTrackHttpxTimeoutError(
                 f"""The request to SpaceTrack timed out (httpx.TimeoutException)
-                while retrieving all GP history for NORAD ID {norad_id}: {str(e)}"""
+                while retrieving all GP history for {filter_by} {value}: {str(e)}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise AsyncSpaceTrackRaiseStatusError(
                 f"""SpaceTrack API returned an unsuccessful HTTP status
                 ({e.response.status_code})while retrieving all GP history
-                for NORAD ID {norad_id}: {e.response.text}"""
+                for {filter_by} {value}: {e.response.text}"""
             ) from e
         except httpx.RequestError as e:
             raise AsyncSpaceTrackRequestError(
                 f"""A network error occurred while requesting all GP history
-                for NORAD ID {norad_id}: {str(e)}"""
+                for {filter_by} {value}: {str(e)}"""
             ) from e
 
     async def _gp_history(
-        self, norad_id: str, start_date: str, end_date: str
+        self, filter_by: str, value: str, start_date: str, end_date: str
     ) -> httpx.Response:
         """
         Retrieve general perturbations (GP) history for a satellite within
@@ -405,41 +408,125 @@ class AsyncSpaceTrack:
         """
         try:
             response = await self.http_client.get(
-                f"basicspacedata/query/class/gp_history/NORAD_CAT_ID/{norad_id}/EPOCH/{start_date}--{end_date}/orderby/EPOCH%20asc/emptyresult/show"
+                f"basicspacedata/query/class/gp_history/{filter_by}/{value}/EPOCH/{start_date}--{end_date}/orderby/EPOCH%20asc/emptyresult/show"
             )
             response.raise_for_status()
             return response
         except asyncio.TimeoutError as e:
             raise AsyncSpaceTrackAsyncTimeoutError(
                 f"""The request to SpaceTrack timed out (asyncio.TimeoutError) while
-                retrieving GP history for NORAD ID {norad_id} between {start_date} and
+                retrieving GP history for {filter_by} {value} between {start_date} and
                 {end_date}: {str(e)}"""
             ) from e
         except httpx.TimeoutException as e:
             raise AsyncSpaceTrackHttpxTimeoutError(
                 f"""The request to SpaceTrack timed out (httpx.TimeoutException) while
-                retrieving GP history for NORAD ID {norad_id} between {start_date} and
+                retrieving GP history for {filter_by} {value} between {start_date} and
                 {end_date}: {str(e)}"""
             ) from e
         except httpx.HTTPStatusError as e:
             raise AsyncSpaceTrackRaiseStatusError(
                 f"""SpaceTrack API returned an unsuccessful HTTP status
-                ({e.response.status_code}) while retrieving GP history forNORAD ID
-                {norad_id} between {start_date} and {end_date}: {e.response.text}
+                ({e.response.status_code}) while retrieving GP history for
+                {filter_by} {value} between {start_date} and {end_date}:
+                {e.response.text}
                 """
             ) from e
         except httpx.RequestError as e:
             raise AsyncSpaceTrackRequestError(
-                f"""A network error occurred while requesting GP history for NORAD ID
-                {norad_id} between {start_date} and {end_date}: {str(e)}"""
+                f"""A network error occurred while requesting GP history for {filter_by}
+                {value} between {start_date} and {end_date}: {str(e)}"""
+            ) from e
+
+    async def _custom_query(self, query: str) -> httpx.Response:
+        """
+        Perform a custom query against the SpaceTrack API.
+
+        Args:
+            query (str): The custom query string to execute.
+
+        Returns:
+            Response: A Response object containing the HTTP status code and the
+            API response data.
+
+        Raises:
+            SpaceTrackAuthenticationError: If authentication fails.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        try:
+            response = await self.http_client.get(f"{query}")
+            response.raise_for_status()
+            return response
+        except asyncio.TimeoutError as e:
+            raise AsyncSpaceTrackAsyncTimeoutError(
+                f"The request to SpaceTrack timed out (asyncio.TimeoutError) "
+                f"while executing custom query '{query}': {str(e)}"
+            ) from e
+        except httpx.TimeoutException as e:
+            raise AsyncSpaceTrackHttpxTimeoutError(
+                f"The request to SpaceTrack timed out (httpx.TimeoutException) "
+                f"while executing custom query '{query}': {str(e)}"
+            ) from e
+        except httpx.HTTPStatusError as e:
+            raise AsyncSpaceTrackRaiseStatusError(
+                f"SpaceTrack API returned an unsuccessful HTTP status "
+                f"({e.response.status_code}) while executing custom query "
+                f"'{query}': {e.response.text}"
+            ) from e
+        except httpx.RequestError as e:
+            raise AsyncSpaceTrackRequestError(
+                f"A network error occurred while executing custom query "
+                f"'{query}': {str(e)}"
+            ) from e
+
+    async def _announcement(self) -> httpx.Response:
+        """
+        Retrieve the latest announcements from the SpaceTrack API.
+
+        This method is intended to be used when the user manages authentication manually
+        (e.g., via a context manager or explicit login/logout).
+        It requires the user to be authenticated before calling,
+        and does not perform login or logout automatically.
+
+        Returns:
+            Response: A Response object containing the HTTP status code and the API
+            response data.
+
+        Raises:
+            SpaceTrackAuthenticationError: If the user is not authenticated.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        try:
+            response = await self.http_client.get("/announcements")
+            response.raise_for_status()
+            return response
+        except asyncio.TimeoutError as e:
+            raise AsyncSpaceTrackAsyncTimeoutError(
+                f"The request to SpaceTrack timed out (asyncio.TimeoutError) "
+                f"while retrieving announcements: {str(e)}"
+            ) from e
+        except httpx.TimeoutException as e:
+            raise AsyncSpaceTrackHttpxTimeoutError(
+                f"The request to SpaceTrack timed out (httpx.TimeoutException) "
+                f"while retrieving announcements: {str(e)}"
+            ) from e
+        except httpx.HTTPStatusError as e:
+            raise AsyncSpaceTrackRaiseStatusError(
+                f"SpaceTrack API returned an unsuccessful HTTP status "
+                f"({e.response.status_code}) while retrieving announcements: "
+                f"{e.response.text}"
+            ) from e
+        except httpx.RequestError as e:
+            raise AsyncSpaceTrackRequestError(
+                f"A network error occurred while retrieving announcements: {str(e)}"
             ) from e
 
     # ===========================================
-    # Public API Methods
+    # Public API Methods - handles authentication automatically
     # ===========================================
     @AsyncSpaceTrackUtils.handle_login_and_logout
     @AsyncSpaceTrackUtils.ratelimit
-    async def gp(self, norad_id: str) -> SpaceTrackGPResponse:
+    async def gp(self, filter_by: str, value: str) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) data for a satellite
         from the SpaceTrack API.
@@ -462,7 +549,7 @@ class AsyncSpaceTrack:
             httpx.HTTPStatusError: If the HTTP request fails.
         """
 
-        response = await self._gp(norad_id)
+        response = await self._gp(filter_by, value)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
@@ -470,7 +557,7 @@ class AsyncSpaceTrack:
 
     @AsyncSpaceTrackUtils.handle_login_and_logout
     @AsyncSpaceTrackUtils.ratelimit
-    async def all_gp_history(self, norad_id: str) -> SpaceTrackGPResponse:
+    async def all_gp_history(self, filter_by: str, value: str) -> SpaceTrackGPResponse:
         """
         Retrieve historical general perturbations (GP) data for a satellite from the
         SpaceTrack API.
@@ -493,7 +580,7 @@ class AsyncSpaceTrack:
             httpx.HTTPStatusError: If the HTTP request fails.
         """
 
-        response = await self._all_gp_history(norad_id)
+        response = await self._all_gp_history(filter_by, value)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
@@ -502,7 +589,7 @@ class AsyncSpaceTrack:
     @AsyncSpaceTrackUtils.handle_login_and_logout
     @AsyncSpaceTrackUtils.ratelimit
     async def gp_history(
-        self, norad_id: str, start_date: str, end_date: str
+        self, filter_by: str, value: str, start_date: str, end_date: str
     ) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) history for a satellite within a date range
@@ -527,14 +614,66 @@ class AsyncSpaceTrack:
             SpaceTrackAuthenticationError: If authentication fails.
             httpx.HTTPStatusError: If the HTTP request fails.
         """
-        response = await self._gp_history(norad_id, start_date, end_date)
+        response = await self._gp_history(filter_by, value, start_date, end_date)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
         )
 
+    @AsyncSpaceTrackUtils.handle_login_and_logout
     @AsyncSpaceTrackUtils.ratelimit
-    async def gp_session(self, norad_id: str) -> SpaceTrackGPResponse:
+    async def custom_query(self, query: str) -> httpx.Response:
+        """
+        Perform a custom query against the SpaceTrack API.
+
+        This method authenticates the user if necessary, sends a GET request to the
+        SpaceTrack API with the provided query, and returns the response data.
+
+        Args:
+            query (str): The custom query string to execute.
+
+        Returns:
+            Response: A Response object containing the HTTP status code and the
+            API response data.
+
+        Raises:
+            SpaceTrackAuthenticationError: If authentication fails.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        response = await self._custom_query(query)
+        return response
+
+    @AsyncSpaceTrackUtils.handle_login_and_logout
+    @AsyncSpaceTrackUtils.ratelimit
+    async def announcement(self) -> SpaceTrackAnnouncementResponse:
+        """
+        Retrieve announcements from the SpaceTrack API.
+
+        This method authenticates the user if necessary, sends a GET request to the
+        SpaceTrack API for announcements, and returns the response data.
+
+        The user is logged out and the HTTP client is closed after the request.
+
+        Returns:
+            Response: A Response object containing the HTTP status code and the
+            API response data.
+
+        Raises:
+            SpaceTrackAuthenticationError: If authentication fails.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        response = await self._announcement()
+        return SpaceTrackAnnouncementResponse(
+            status_code=response.status_code,
+            **response.json(),
+        )
+
+    # ===========================================
+    # Public API Methods - handles authentication manually
+    # ===========================================
+
+    @AsyncSpaceTrackUtils.ratelimit
+    async def gp_session(self, filter_by: str, value: str) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) data for a satellite from the SpaceTrack API
         within an authenticated session.
@@ -560,14 +699,16 @@ class AsyncSpaceTrack:
                 """User is not authenticated. Please call login() before using this
                 method."""
             )
-        response = await self._gp(norad_id)
+        response = await self._gp(filter_by, value)
         return SpaceTrackGPResponse(
             status_code=response.status_code,
             **response.json(),
         )
 
     @AsyncSpaceTrackUtils.ratelimit
-    async def all_gp_history_session(self, norad_id: str) -> SpaceTrackGPResponse:
+    async def all_gp_history_session(
+        self, filter_by: str, value: str
+    ) -> SpaceTrackGPResponse:
         """
         Retrieve historical general perturbations (GP) data for a satellite from the
         SpaceTrack API within an authenticated session.
@@ -593,7 +734,7 @@ class AsyncSpaceTrack:
                 """User is not authenticated. Please call login() before using this
                 method."""
             )
-        response = await self._all_gp_history(norad_id)
+        response = await self._all_gp_history(filter_by, value)
         response.raise_for_status()
         return SpaceTrackGPResponse(
             status_code=response.status_code,
@@ -602,7 +743,7 @@ class AsyncSpaceTrack:
 
     @AsyncSpaceTrackUtils.ratelimit
     async def gp_history_session(
-        self, norad_id: str, start_date: str, end_date: str
+        self, filter_by: str, value: str, start_date: str, end_date: str
     ) -> SpaceTrackGPResponse:
         """
         Retrieve general perturbations (GP) history for a satellite within a date range
@@ -631,8 +772,67 @@ class AsyncSpaceTrack:
                 """User is not authenticated. Please call login() before using this
                 method."""
             )
-        response = await self._gp_history(norad_id, start_date, end_date)
+        response = await self._gp_history(filter_by, value, start_date, end_date)
         return SpaceTrackGPResponse(
+            status_code=response.status_code,
+            **response.json(),
+        )
+
+    @AsyncSpaceTrackUtils.ratelimit
+    async def custom_query_session(self, query: str) -> httpx.Response:
+        """
+        Perform a custom query against the SpaceTrack API within an authenticated
+        session.
+
+        This method is intended to be used when the user manages authentication manually
+        (e.g., via a context manager or explicit login/logout).
+        It requires the user to be authenticated before calling, and does not perform
+        login or logout automatically.
+
+        Args:
+            query (str): The custom query string to execute.
+
+        Returns:
+            Response: A Response object containing the HTTP status code and the API
+            response data.
+
+        Raises:
+            SpaceTrackAuthenticationError: If the user is not authenticated.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        if not self._authenticated:
+            raise SpaceTrackAuthenticationError(
+                """User is not authenticated. Please call login() before using this
+                method."""
+            )
+        response = await self._custom_query(query)
+        return response
+
+    @AsyncSpaceTrackUtils.ratelimit
+    async def announcement_session(self) -> SpaceTrackAnnouncementResponse:
+        """
+        Retrieve announcements from the SpaceTrack API within an authenticated session.
+
+        This method is intended to be used when the user manages authentication manually
+        (e.g., via a context manager or explicit login/logout).
+        It requires the user to be authenticated before calling, and does not perform
+        login or logout automatically.
+
+        Returns:
+            Response: A Response object containing the HTTP status code and the API
+            response data.
+
+        Raises:
+            SpaceTrackAuthenticationError: If the user is not authenticated.
+            httpx.HTTPStatusError: If the HTTP request fails.
+        """
+        if not self._authenticated:
+            raise SpaceTrackAuthenticationError(
+                """User is not authenticated. Please call login() before using this
+                method."""
+            )
+        response = await self._announcement()
+        return SpaceTrackAnnouncementResponse(
             status_code=response.status_code,
             **response.json(),
         )
